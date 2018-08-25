@@ -23,8 +23,10 @@ LiquidCrystal lcd(LCD_RS, LCD_RW, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 ClickEncoder *encoder;
 int16_t last, value;
 
-void timerIsr() {
-  encoder->service();
+ISR(TIMER2_OVF_vect)        // interrupt service routine 
+{
+  TCNT2 = timer2_counter;   // preload timer
+  encoder->service(); 
 }
 
 #ifdef WITH_LCD
@@ -45,8 +47,13 @@ void setup() {
   displayAccelerationStatus();
 #endif
 
-  Timer1.initialize(1000);
-  Timer1.attachInterrupt(timerIsr); 
+  noInterrupts();                   // disable all interrupts
+  TCCR2B = 0;
+  timer2_counter = 6;               // preload timer 1ms
+  TCNT2 = timer2_counter;           // preload timer
+  TCCR2B |=  (1<<CS21) | (1<<CS20); // 64 prescaler 
+  TIMSK2 |= (1 << TOIE2);           // enable timer overflow interrupt
+  interrupts();                     // enable all interrupts
   
   last = -1;
 }
